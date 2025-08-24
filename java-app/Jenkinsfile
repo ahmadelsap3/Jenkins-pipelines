@@ -36,5 +36,4 @@ pipeline {
             sh 'rm -f Main.class app.jar'
         }
     }
-}
-])
+})
