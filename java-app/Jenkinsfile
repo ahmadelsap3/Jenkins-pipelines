@@ -19,15 +19,15 @@ pipeline {
         }
         stage('Build & Push Docker') {
             parallel {
-                Build_Docker {
+                stage('Build Docker') {
                     steps {
-                        bat "docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% ."
+                        sh 'docker build -t ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} .'
                     }
                 }
-                Docker_Login_and_Push {
+                stage('Docker Login & Push') {
                     steps {
-                        bat "echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin"
-                        bat "docker push %DOCKER_IMAGE%:%DOCKER_TAG%"
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                        sh 'docker push ${params.DOCKER_IMAGE}:${params.DOCKER_TAG}'
                     }
                 }
             }
@@ -35,14 +35,8 @@ pipeline {
     }
     post {
         always {
-            script {
-                bat "docker rmi %DOCKER_IMAGE%:%DOCKER_TAG% || exit 0"
-                bat "del Main.class app.jar"
-            }
+            sh 'docker rmi ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} || true'
+            sh 'rm -f Main.class app.jar'
         }
     }
 }
-library identifier: 'sharedlib', retriever: modernSCM([
-    $class: 'GitSCMSource',
-    remote: 'https://your-sharedlib-repo.git'
-])
