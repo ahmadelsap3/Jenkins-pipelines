@@ -19,7 +19,7 @@ pipeline {
                 }
                     bat 'dir java-app'
                     bat 'javac java-app\\Main.java'
-                    bat '"C:\\Program Files\\Java\\jdk-17\\bin\\jar.exe" cf app.jar Main.class'
+                    bat '"C:\\Program Files\\Java\\jdk-17\\bin\\jar.exe" cf app.jar java-app\\Main.class'
             }
         }
         stage('Build & Push Docker') {
