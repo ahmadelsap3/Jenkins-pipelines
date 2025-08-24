@@ -17,6 +17,7 @@ pipeline {
                     def myBounds = bounds(1, 100)
                     echo "Bounds: ${myBounds}"
                 }
+                bat 'dir'
                 bat 'javac Main.java'
                 bat 'jar cf app.jar Main.class'
             }
