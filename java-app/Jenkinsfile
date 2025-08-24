@@ -5,8 +5,12 @@ pipeline {
         string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker image name')
         string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag')
     }
-    // environment block removed; use bounds in script block
     stages {
+        stage('Check Docker') {
+            steps {
+                bat 'docker version'
+            }
+        }
         stage('Build Jar') {
             steps {
                 script {
