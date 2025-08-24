@@ -1,5 +1,9 @@
 @Library('sharedlib') _
 pipeline {
+    environment {
+        DOCKER_USERNAME = credentials('docker-username-id')
+        DOCKER_PASSWORD = credentials('docker-password-id')
+    }
     agent any
     parameters {
         string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker image name')
