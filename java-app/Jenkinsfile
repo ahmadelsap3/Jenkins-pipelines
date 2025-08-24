@@ -37,7 +37,4 @@ pipeline {
         }
     }
 }
-library identifier: 'sharedlib', retriever: modernSCM([
-    $class: 'GitSCMSource',
-    remote: 'https://your-sharedlib-repo.git'
 ])
