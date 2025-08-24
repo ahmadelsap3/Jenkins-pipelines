@@ -1,0 +1,39 @@
+node {
+    properties([
+        parameters([
+            string(name: 'PYTHON_VERSION', defaultValue: '3.8', description: 'Python version'),
+            string(name: 'BOUNDS_MIN', defaultValue: '1', description: 'Bounds min'),
+            string(name: 'BOUNDS_MAX', defaultValue: '100', description: 'Bounds max')
+        ])
+    ])
+    def bounds = bounds(params.BOUNDS_MIN as int, params.BOUNDS_MAX as int)
+    stage('Parallel Build & Test') {
+        parallel(
+            'Build': {
+                sh "echo Building Python app..."
+            },
+            'Test': {
+                sh "echo Running tests..."
+            }
+        )
+    }
+    stage('Docker Build & Push') {
+        parallel(
+            'Build Docker': {
+                sh "echo Building Docker image..."
+            },
+            'Push Docker': {
+                sh "echo Pushing Docker image..."
+            }
+        )
+    }
+    post {
+        always {
+            sh "echo Cleaning up..."
+        }
+    }
+}
+library identifier: 'sharedlib', retriever: modernSCM([
+    $class: 'GitSCMSource',
+    remote: 'https://your-sharedlib-repo.git'
+])
