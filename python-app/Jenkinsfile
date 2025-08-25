@@ -8,6 +8,14 @@ node {
         ])
     ])
 
+    stage('Clone Repo') {
+        // when using "Pipeline script" (not Pipeline from SCM) we must clone manually
+        // ensure git is available on the agent
+        bat 'git --version'
+        // clone the repository into the workspace (shallow clone)
+        bat 'if not exist .git (git clone --depth 1 https://github.com/ahmadelsap3/Jenkins-pipelines .) else (echo repo already cloned)'
+    }
+
     stage('Init') {
         echo "Using sharedlib bounds: ${bounds(1,100)}"
         bat 'dir python-app'
@@ -102,7 +110,3 @@ node {
         }
     }
 }
-library identifier: 'sharedlib', retriever: modernSCM([
-    $class: 'GitSCMSource',
-    remote: 'https://your-sharedlib-repo.git'
-])
