@@ -1,19 +1,19 @@
 @Library('sharedlib') _
 node {
-    // Declare job parameters (scripted pipelines use properties)
     properties([
         parameters([
             string(name: 'DOCKER_IMAGE', defaultValue: 'my-python-app', description: 'Docker image name'),
             string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag')
         ])
     ])
+    stage('Workspace Cleanup') {
+    bat 'del /Q /F *'
+    // Do NOT delete python-app!
+    }
 
     stage('Clone Repo') {
-        // when using "Pipeline script" (not Pipeline from SCM) we must clone manually
-        // ensure git is available on the agent
-        bat 'git --version'
-        // clone the repository into the workspace (shallow clone)
-        bat 'if not exist .git (git clone --depth 1 https://github.com/ahmadelsap3/Jenkins-pipelines .) else (echo repo already cloned)'
+        // No need to clone, just verify repo presence
+        bat 'dir'
     }
 
     stage('Init') {
@@ -23,7 +23,6 @@ node {
 
     try {
         stage('Install') {
-            // Install requirements if present (non-failing)
             bat 'python --version'
             bat 'if exist python-app\\requirements.txt (pip install -r python-app\\requirements.txt) else (echo No requirements.txt)'
         }
@@ -32,13 +31,11 @@ node {
             parallel(
                 Tests: {
                     stage('Unit Tests') {
-                        // run tests if pytest present
                         bat 'if exist python-app\\test (python -m pytest python-app || echo tests failed)'
                     }
                 },
                 Lint: {
                     stage('Lint') {
-                        // run flake8 if available
                         bat 'python -m pip show flake8 >nul 2>&1 || python -m pip install flake8'
                         bat 'python -m flake8 python-app || echo lint issues'
                     }
@@ -47,18 +44,14 @@ node {
         }
 
         stage('Build Docker') {
-            // debug: list workspace and python-app contents so we can see what is sent to Docker
             bat 'dir'
             bat 'dir python-app'
-            // build using explicit Dockerfile path and python-app as context
             bat "docker build -f python-app/Dockerfile -t ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} python-app"
             bat 'docker images'
         }
 
         stage('Login & Push') {
-            // use Jenkins credentials to login and push under the authenticated user's namespace
             withCredentials([usernamePassword(credentialsId: 'Docker-ID', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                // retag the locally-built image into the user namespace
                 bat "docker tag ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} %DOCKER_USER%/${params.DOCKER_IMAGE}:${params.DOCKER_TAG}"
                 bat 'docker images'
                 bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
@@ -72,44 +65,8 @@ node {
         throw err
     } finally {
         stage('Cleanup') {
-            // attempt to remove both local tags
             bat "docker rmi ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} || exit 0"
             bat "docker rmi %DOCKER_USER%/${params.DOCKER_IMAGE}:${params.DOCKER_TAG} || exit 0"
-        }
-    }
-}
-node {
-    properties([
-        parameters([
-            string(name: 'PYTHON_VERSION', defaultValue: '3.8', description: 'Python version'),
-            string(name: 'BOUNDS_MIN', defaultValue: '1', description: 'Bounds min'),
-            string(name: 'BOUNDS_MAX', defaultValue: '100', description: 'Bounds max')
-        ])
-    ])
-    def bounds = bounds(params.BOUNDS_MIN as int, params.BOUNDS_MAX as int)
-    stage('Parallel Build & Test') {
-        parallel(
-            'Build': {
-                sh "echo Building Python app..."
-            },
-            'Test': {
-                sh "echo Running tests..."
-            }
-        )
-    }
-    stage('Docker Build & Push') {
-        parallel(
-            'Build Docker': {
-                sh "echo Building Docker image..."
-            },
-            'Push Docker': {
-                sh "echo Pushing Docker image..."
-            }
-        )
-    }
-    post {
-        always {
-            sh "echo Cleaning up..."
         }
     }
 }
