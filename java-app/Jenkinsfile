@@ -1,10 +1,11 @@
 @Library('sharedlib') _
 pipeline {
+    agent any
     environment {
+        // Single "Username with password" credential stored in Jenkins
+        // provides DOCKER_CREDENTIALS_USR and DOCKER_CREDENTIALS_PSW
         DOCKER_CREDENTIALS = credentials('f9c09f9e-9bd8-430a-8a62-04954b75b228')
     }
-    }
-    agent any
     parameters {
         string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker image name')
         string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag')
@@ -15,16 +16,20 @@ pipeline {
                 bat 'docker version'
             }
         }
+
+        stage('Build Jar') {
             steps {
                 script {
                     def myBounds = bounds(1, 100)
                     echo "Bounds: ${myBounds}"
                 }
-                    bat 'dir java-app'
-                    bat 'javac java-app\\Main.java'
-                    bat '"C:\\Program Files\\Java\\jdk-17\\bin\\jar.exe" cf app.jar java-app\\Main.class'
+                bat 'dir java-app'
+                bat 'javac java-app\\Main.java'
+                // package compiled class into app.jar (path to class provided)
+                bat '"C:\\Program Files\\Java\\jdk-17\\bin\\jar.exe" cf app.jar java-app\\Main.class'
             }
         }
+
         stage('Build & Push Docker') {
             parallel {
                 stage('Build Docker') {
@@ -34,15 +39,18 @@ pipeline {
                 }
                 stage('Docker Login & Push') {
                     steps {
+                        // use injected credential variables from environment
                         bat "echo %DOCKER_CREDENTIALS_PSW% | docker login -u %DOCKER_CREDENTIALS_USR% --password-stdin"
                         bat "docker push %DOCKER_IMAGE%:%DOCKER_TAG%"
                     }
                 }
             }
         }
+    }
     post {
         always {
             bat "docker rmi %DOCKER_IMAGE%:%DOCKER_TAG% || exit 0"
             bat "del Main.class app.jar"
         }
     }
+}
