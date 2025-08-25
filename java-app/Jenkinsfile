@@ -32,13 +32,17 @@ pipeline {
 
         stage('Build Docker') {
             steps {
-                // compute fully-qualified image name and export to env for later steps
+                // show the credential/user variables for debugging (masked in Jenkins UI)
+                bat 'set | findstr /I "DOCKER_CREDENTIALS DOCKER_IMAGE DOCKER_TAG"'
+                // compute fully-qualified image name and echo it
                 script {
                     env.FQ_IMAGE = "${DOCKER_CREDENTIALS_USR}/${DOCKER_IMAGE}:${DOCKER_TAG}"
                     echo "FQ_IMAGE=${env.FQ_IMAGE}"
                 }
-                // tag image under Docker Hub username so push goes to your namespace
-                bat "docker build -t %FQ_IMAGE% ."
+                // build with fully-qualified tag (use username namespace explicitly)
+                bat "docker build -t %DOCKER_CREDENTIALS_USR%/%DOCKER_IMAGE%:%DOCKER_TAG% ."
+                // show images and verify the exact tag exists
+                bat 'docker images'
             }
         }
 
