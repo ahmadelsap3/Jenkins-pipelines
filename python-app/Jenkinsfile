@@ -47,8 +47,11 @@ node {
         }
 
         stage('Build Docker') {
-            // build context is the python-app folder (expects a Dockerfile there)
-            bat "docker build -t ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} python-app"
+            // debug: list workspace and python-app contents so we can see what is sent to Docker
+            bat 'dir'
+            bat 'dir python-app'
+            // build using explicit Dockerfile path and python-app as context
+            bat "docker build -f python-app/Dockerfile -t ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} python-app"
             bat 'docker images'
         }
 
