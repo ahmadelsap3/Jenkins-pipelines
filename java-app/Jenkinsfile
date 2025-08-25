@@ -2,9 +2,9 @@
 pipeline {
     agent any
     environment {
-        // Single "Username with password" credential stored in Jenkins
-        // provides DOCKER_CREDENTIALS_USR and DOCKER_CREDENTIALS_PSW
-        DOCKER_CREDENTIALS = credentials('f9c09f9e-9bd8-430a-8a62-04954b75b228')
+    // Single "Username with password" credential stored in Jenkins
+    // provides DOCKER_CREDENTIALS_USR and DOCKER_CREDENTIALS_PSW
+    DOCKER_CREDENTIALS = credentials('Docker-ID')
     }
     parameters {
         string(name: 'DOCKER_IMAGE', defaultValue: 'my-java-app', description: 'Docker image name')
@@ -52,7 +52,7 @@ pipeline {
             steps {
                 echo "About to push: ${env.FQ_IMAGE}"
                 // use withCredentials to inject username/password safely
-                withCredentials([usernamePassword(credentialsId: 'f9c09f9e-9bd8-430a-8a62-04954b75b228', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'Docker-ID', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     // show images for debug
                     bat 'docker images'
                     // login using injected vars
