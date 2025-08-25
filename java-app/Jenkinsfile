@@ -48,4 +48,3 @@ pipeline {
             bat "del Main.class app.jar"
         }
     }
-}
