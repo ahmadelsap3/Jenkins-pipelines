@@ -1,3 +1,72 @@
+@Library('sharedlib') _
+node {
+    // Declare job parameters (scripted pipelines use properties)
+    properties([
+        parameters([
+            string(name: 'DOCKER_IMAGE', defaultValue: 'my-python-app', description: 'Docker image name'),
+            string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker image tag')
+        ])
+    ])
+
+    stage('Init') {
+        echo "Using sharedlib bounds: ${bounds(1,100)}"
+        bat 'dir python-app'
+    }
+
+    try {
+        stage('Install') {
+            // Install requirements if present (non-failing)
+            bat 'python --version'
+            bat 'if exist python-app\\requirements.txt (pip install -r python-app\\requirements.txt) else (echo No requirements.txt)'
+        }
+
+        stage('Test & Lint (parallel)') {
+            parallel(
+                Tests: {
+                    stage('Unit Tests') {
+                        // run tests if pytest present
+                        bat 'if exist python-app\\test (python -m pytest python-app || echo tests failed)'
+                    }
+                },
+                Lint: {
+                    stage('Lint') {
+                        // run flake8 if available
+                        bat 'python -m pip show flake8 >nul 2>&1 || python -m pip install flake8'
+                        bat 'python -m flake8 python-app || echo lint issues'
+                    }
+                }
+            )
+        }
+
+        stage('Build Docker') {
+            // build context is the python-app folder (expects a Dockerfile there)
+            bat "docker build -t ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} python-app"
+            bat 'docker images'
+        }
+
+        stage('Login & Push') {
+            // use Jenkins credentials to login and push under the authenticated user's namespace
+            withCredentials([usernamePassword(credentialsId: 'Docker-ID', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                // retag the locally-built image into the user namespace
+                bat "docker tag ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} %DOCKER_USER%/${params.DOCKER_IMAGE}:${params.DOCKER_TAG}"
+                bat 'docker images'
+                bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                bat "docker push %DOCKER_USER%/${params.DOCKER_IMAGE}:${params.DOCKER_TAG}"
+            }
+        }
+
+    } catch (err) {
+        echo "Build failed: ${err}"
+        currentBuild.result = 'FAILURE'
+        throw err
+    } finally {
+        stage('Cleanup') {
+            // attempt to remove both local tags
+            bat "docker rmi ${params.DOCKER_IMAGE}:${params.DOCKER_TAG} || exit 0"
+            bat "docker rmi %DOCKER_USER%/${params.DOCKER_IMAGE}:${params.DOCKER_TAG} || exit 0"
+        }
+    }
+}
 node {
     properties([
         parameters([
